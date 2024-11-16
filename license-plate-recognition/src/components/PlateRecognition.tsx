@@ -10,7 +10,11 @@ interface PlateResult {
   box: number[];
 }
 
-const PlateRecognition = () => {
+interface PlateRecognitionProps {
+  onRecognized: (result: { code: string; image: string }) => void;
+}
+
+const PlateRecognition: React.FC<PlateRecognitionProps> = ({ onRecognized }) => {
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<PlateResult[]>([]);
   const [previewImage, setPreviewImage] = useState<string>('');
@@ -29,8 +33,15 @@ const PlateRecognition = () => {
 
       if (response.data.code === 5000) {
         setResults(response.data.result.plate_list);
-        // 创建预览图片URL
-        setPreviewImage(URL.createObjectURL(file));
+        const imageUrl = URL.createObjectURL(file);
+        setPreviewImage(imageUrl);
+        
+        if (response.data.result.plate_list.length > 0) {
+          onRecognized({
+            code: response.data.result.plate_list[0].code,
+            image: imageUrl
+          });
+        }
       }
     } catch (error) {
       console.error('识别失败:', error);
