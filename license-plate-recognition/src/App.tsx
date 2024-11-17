@@ -4,7 +4,7 @@ import './App.css'
 function App() {
   return (
     <div className="App">
-      <PlateRecognition />
+      <PlateRecognition onRecognized={(plate) => console.log(plate)} />
     </div>
   )
 }

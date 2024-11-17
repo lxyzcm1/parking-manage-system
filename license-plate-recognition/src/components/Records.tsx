@@ -145,7 +145,7 @@ const Records = () => {
             onClick={() => handlePrintRecord(record)}
             icon={<PrinterOutlined />}
           >
-            打���
+            打印
           </Button>
         </Space>
       ),
