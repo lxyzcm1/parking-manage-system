@@ -1,4 +1,4 @@
-from fastapi import FastAPI, File, UploadFile, HTTPException, Depends, Query
+from fastapi import FastAPI, File, UploadFile, HTTPException, Depends, Query, Body
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 import sys
@@ -8,7 +8,7 @@ import hyperlpr3 as lpr3
 import cv2
 import numpy as np
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Dict
 
 # 获取项目根目录的绝对路径
 PROJECT_ROOT = Path(__file__).parent.parent
@@ -294,6 +294,55 @@ async def get_parking_lots(db: Session = Depends(get_db)):
     """获取所有停车场信息"""
     parking_lots = db.query(ParkingLot).all()
     return parking_lots
+
+
+@app.put("/parking/lots/{lot_id}",
+    summary="更新停车场信息",
+    description="更新指定停车场的信息，包括名称、容量、费率等",
+    response_description="返回更新后的停车场信息",
+    responses={
+        200: {
+            "description": "成功更新停车场信息",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "id": 1,
+                        "name": "A区停车场",
+                        "capacity": 100,
+                        "hourly_rate": 10.0,
+                        "description": "位于商场主楼北侧"
+                    }
+                }
+            }
+        },
+        404: {"description": "停车场不存在"}
+    }
+)
+async def update_parking_lot(
+    lot_id: int,
+    lot_data: Dict = Body(..., example={
+        "name": "A区停车场",
+        "capacity": 100,
+        "hourly_rate": 10.0,
+        "description": "位于商场主楼北侧"
+    }),
+    db: Session = Depends(get_db)
+):
+    """更新停车场信息"""
+    lot = db.query(ParkingLot).filter(ParkingLot.id == lot_id).first()
+    if not lot:
+        raise HTTPException(status_code=404, detail="停车场不存在")
+    
+    for key, value in lot_data.items():
+        if hasattr(lot, key):
+            setattr(lot, key, value)
+    
+    try:
+        db.commit()
+        return lot
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @app.get("/parking/records",

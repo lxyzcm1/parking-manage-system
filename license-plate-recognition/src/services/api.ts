@@ -45,8 +45,20 @@ export interface StatisticsData {
 
 const api = {
   // 获取停车场列表
-  async getParkingLots() {
+  async getParkingLots(): Promise<ParkingLot[]> {
     const response = await axios.get<ParkingLot[]>(`${API_BASE_URL}/parking/lots`);
+    return response.data;
+  },
+
+  // 获取所有停车场
+  async getAllParkingLots(): Promise<ParkingLot[]> {
+    const response = await axios.get<ParkingLot[]>(`${API_BASE_URL}/parking/lots`);
+    return response.data;
+  },
+
+  // 更新停车场信息
+  async updateParkingLot(id: number, data: Partial<ParkingLot>): Promise<ParkingLot> {
+    const response = await axios.put<ParkingLot>(`${API_BASE_URL}/parking/lots/${id}`, data);
     return response.data;
   },
 
