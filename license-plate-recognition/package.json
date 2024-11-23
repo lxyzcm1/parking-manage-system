@@ -12,13 +12,16 @@
   "dependencies": {
     "@ant-design/icons": "^5.5.1",
     "@ant-design/plots": "^2.3.2",
+    "@types/styled-components": "^5.1.34",
     "antd": "^5.22.1",
     "axios": "^1.7.7",
+    "framer-motion": "^11.11.17",
     "html2canvas": "^1.4.1",
     "jspdf": "^2.5.2",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "react-router-dom": "^6.28.0"
+    "react-router-dom": "^6.28.0",
+    "styled-components": "^6.1.13"
   },
   "devDependencies": {
     "@eslint/js": "^9.13.0",

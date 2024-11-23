@@ -87,7 +87,7 @@ const api = {
     formData.append('parking_lot_id', parkingLotId.toString());
 
     const response = await axios.post(
-      `${API_BASE_URL}/parking/entry`,
+      `${API_BASE_URL}/vehicle/entry`,
       formData,
       {
         headers: {
@@ -104,7 +104,7 @@ const api = {
     formData.append('file', image);
 
     const response = await axios.post(
-      `${API_BASE_URL}/parking/exit`,
+      `${API_BASE_URL}/vehicle/exit`,
       formData,
       {
         headers: {

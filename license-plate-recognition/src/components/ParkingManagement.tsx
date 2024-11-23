@@ -1,28 +1,38 @@
 import React, { useState, useEffect } from 'react';
-import {
-  Form,
-  Upload,
-  Button,
-  message,
-  Card,
-  Select,
-  Row,
-  Col,
-  Typography,
-  Space,
-} from 'antd';
+import { Card, Upload, Button, Row, Col, message, Select, Space, Typography } from 'antd';
 import { UploadOutlined } from '@ant-design/icons';
 import type { UploadFile } from 'antd/es/upload/interface';
+import type { RcFile, UploadProps } from 'antd/es/upload';
 import api, { ParkingLot, ParkingRecord } from '../services/api';
+import GateAnimation from './GateAnimation';
+import styled from 'styled-components';
 
 const { Title } = Typography;
-const { Option } = Select;
+
+const AnimationWrapper = styled.div`
+  margin-top: 20px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: #f0f2f5;
+  padding: 20px;
+  border-radius: 8px;
+`;
+
+const StyledCard = styled(Card)`
+  .ant-card-body {
+    min-height: 400px;
+  }
+`;
 
 const ParkingManagement: React.FC = () => {
   const [parkingLots, setParkingLots] = useState<ParkingLot[]>([]);
-  const [entryForm] = Form.useForm();
-  const [exitForm] = Form.useForm();
+  const [entryFile, setEntryFile] = useState<UploadFile | null>(null);
+  const [exitFile, setExitFile] = useState<UploadFile | null>(null);
+  const [selectedLot, setSelectedLot] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
+  const [isAnimating, setIsAnimating] = useState(false);
+  const [isEntry, setIsEntry] = useState(true);
   const [lastRecord, setLastRecord] = useState<ParkingRecord | null>(null);
 
   useEffect(() => {
@@ -38,121 +48,165 @@ const ParkingManagement: React.FC = () => {
     }
   };
 
-  const handleEntrySubmit = async (values: any) => {
+  const handleEntryUpload = async () => {
+    if (!selectedLot) {
+      message.error('请选择停车场');
+      return;
+    }
+
+    if (!entryFile) {
+      message.error('请选择入场图片');
+      return;
+    }
+
     try {
       setLoading(true);
-      const image = values.image.file;
-      const response = await api.vehicleEntry(values.parkingLotId, image);
-      message.success(`车辆入场成功！车牌号：${response.plate_number}`);
+      setIsEntry(true);
+      setIsAnimating(true);
+
+      const response = await api.vehicleEntry(selectedLot, entryFile.originFileObj as File);
+      message.success(`车牌号 ${response.plate_number} 已入场`);
+      setEntryFile(null);
       setLastRecord(response);
-      entryForm.resetFields();
-    } catch (error: any) {
-      message.error(error.response?.data?.detail || '车辆入场失败');
+    } catch (error) {
+      message.error('入场处理失败');
+      setIsAnimating(false);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleExitSubmit = async (values: any) => {
+  const handleExitUpload = async () => {
+    if (!exitFile) {
+      message.error('请选择出场图片');
+      return;
+    }
+
     try {
       setLoading(true);
-      const image = values.image.file;
-      const response = await api.vehicleExit(image);
-      message.success(
-        `车辆出场成功！\n车牌号：${response.plate_number}\n停车时长：${response.duration?.toFixed(
-          2
-        )}小时\n费用：${response.fee?.toFixed(2)}元`
-      );
+      setIsEntry(false);
+      setIsAnimating(true);
+
+      const response = await api.vehicleExit(exitFile.originFileObj as File);
+      message.success(`车牌号 ${response.plate_number} 已出场，费用：${response.fee}元`);
+      setExitFile(null);
       setLastRecord(response);
-      exitForm.resetFields();
-    } catch (error: any) {
-      message.error(error.response?.data?.detail || '车辆出场失败');
+    } catch (error) {
+      message.error('出场处理失败');
+      setIsAnimating(false);
     } finally {
       setLoading(false);
     }
   };
 
-  const uploadProps = {
-    beforeUpload: () => false,
+  const handleAnimationComplete = () => {
+    setIsAnimating(false);
+  };
+
+  const uploadProps: UploadProps = {
+    beforeUpload: (file) => {
+      const isImage = file.type.startsWith('image/');
+      if (!isImage) {
+        message.error('只能上传图片文件！');
+        return false;
+      }
+      return false;
+    },
     maxCount: 1,
   };
 
   return (
-    <div style={{ padding: '24px' }}>
-      <Title level={2}>停车场管理系统</Title>
+    <Space direction="vertical" size="large" style={{ width: '100%', padding: '24px' }}>
+      <Title level={2}>停车场管理</Title>
       <Row gutter={24}>
         <Col span={12}>
-          <Card title="车辆入场">
-            <Form form={entryForm} onFinish={handleEntrySubmit}>
-              <Form.Item
-                name="parkingLotId"
-                label="选择停车场"
-                rules={[{ required: true, message: '请选择停车场' }]}
+          <StyledCard title="车辆入场">
+            <Space direction="vertical" style={{ width: '100%' }}>
+              <Select
+                style={{ width: '100%' }}
+                placeholder="选择停车场"
+                onChange={(value) => setSelectedLot(value)}
+                options={parkingLots.map((lot) => ({
+                  value: lot.id,
+                  label: `${lot.name} (每小时${lot.hourly_rate}元)`,
+                }))}
+              />
+              <Upload
+                {...uploadProps}
+                fileList={entryFile ? [entryFile] : []}
+                onChange={({ fileList }) => setEntryFile(fileList[0])}
               >
-                <Select placeholder="请选择停车场">
-                  {parkingLots.map((lot) => (
-                    <Option key={lot.id} value={lot.id}>
-                      {lot.name} (每小时{lot.hourly_rate}元)
-                    </Option>
-                  ))}
-                </Select>
-              </Form.Item>
-              <Form.Item
-                name="image"
-                label="车辆图片"
-                rules={[{ required: true, message: '请上传车辆图片' }]}
+                <Button icon={<UploadOutlined />}>选择入场图片</Button>
+              </Upload>
+              <Button
+                type="primary"
+                onClick={handleEntryUpload}
+                loading={loading && isEntry}
+                disabled={!entryFile || !selectedLot || isAnimating}
+                style={{ width: '100%' }}
               >
-                <Upload {...uploadProps}>
-                  <Button icon={<UploadOutlined />}>上传图片</Button>
-                </Upload>
-              </Form.Item>
-              <Form.Item>
-                <Button type="primary" htmlType="submit" loading={loading}>
-                  确认入场
-                </Button>
-              </Form.Item>
-            </Form>
-          </Card>
+                确认入场
+              </Button>
+            </Space>
+            <AnimationWrapper>
+              {isEntry && (
+                <GateAnimation
+                  isEntry={true}
+                  isAnimating={isAnimating}
+                  onAnimationComplete={handleAnimationComplete}
+                />
+              )}
+            </AnimationWrapper>
+          </StyledCard>
         </Col>
         <Col span={12}>
-          <Card title="车辆出场">
-            <Form form={exitForm} onFinish={handleExitSubmit}>
-              <Form.Item
-                name="image"
-                label="车辆图片"
-                rules={[{ required: true, message: '请上传车辆图片' }]}
+          <StyledCard title="车辆出场">
+            <Space direction="vertical" style={{ width: '100%' }}>
+              <Upload
+                {...uploadProps}
+                fileList={exitFile ? [exitFile] : []}
+                onChange={({ fileList }) => setExitFile(fileList[0])}
               >
-                <Upload {...uploadProps}>
-                  <Button icon={<UploadOutlined />}>上传图片</Button>
-                </Upload>
-              </Form.Item>
-              <Form.Item>
-                <Button type="primary" htmlType="submit" loading={loading}>
-                  确认出场
-                </Button>
-              </Form.Item>
-            </Form>
-          </Card>
+                <Button icon={<UploadOutlined />}>选择出场图片</Button>
+              </Upload>
+              <Button
+                type="primary"
+                onClick={handleExitUpload}
+                loading={loading && !isEntry}
+                disabled={!exitFile || isAnimating}
+                style={{ width: '100%' }}
+              >
+                确认出场
+              </Button>
+            </Space>
+            <AnimationWrapper>
+              {!isEntry && (
+                <GateAnimation
+                  isEntry={false}
+                  isAnimating={isAnimating}
+                  onAnimationComplete={handleAnimationComplete}
+                />
+              )}
+            </AnimationWrapper>
+          </StyledCard>
         </Col>
       </Row>
 
       {lastRecord && (
-        <Card title="最近记录" style={{ marginTop: '24px' }}>
-          <Space direction="vertical">
-            <p>车牌号：{lastRecord.plate_number}</p>
-            <p>停车场：{lastRecord.parking_lot}</p>
-            <p>入场时间：{lastRecord.entry_time}</p>
-            {lastRecord.exit_time && (
-              <>
-                <p>出场时间：{lastRecord.exit_time}</p>
-                <p>停车时长：{lastRecord.duration?.toFixed(2)}小时</p>
-                <p>费用：{lastRecord.fee?.toFixed(2)}元</p>
-              </>
-            )}
-          </Space>
+        <Card title="最近记录">
+          <p>车牌号：{lastRecord.plate_number}</p>
+          <p>停车场：{lastRecord.parking_lot}</p>
+          <p>入场时间：{lastRecord.entry_time}</p>
+          {lastRecord.exit_time && (
+            <>
+              <p>出场时间：{lastRecord.exit_time}</p>
+              <p>停车时长：{lastRecord.duration?.toFixed(2)}小时</p>
+              <p>费用：{lastRecord.fee?.toFixed(2)}元</p>
+            </>
+          )}
         </Card>
       )}
-    </div>
+    </Space>
   );
 };
 

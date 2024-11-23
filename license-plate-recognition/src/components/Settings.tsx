@@ -11,18 +11,24 @@ import {
   Modal,
   Typography,
 } from 'antd';
-import { EditOutlined } from '@ant-design/icons';
+import { EditOutlined, LockOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import api, { ParkingLot } from '../services/api';
 
 const { Title } = Typography;
+
+// 管理员密码 - 实际应用中应该从后端验证
+const ADMIN_PASSWORD = '123456';
 
 const Settings: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [parkingLots, setParkingLots] = useState<ParkingLot[]>([]);
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [currentLot, setCurrentLot] = useState<ParkingLot | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [passwordModalVisible, setPasswordModalVisible] = useState(false);
   const [form] = Form.useForm();
+  const [passwordForm] = Form.useForm();
 
   const fetchParkingLots = async () => {
     try {
@@ -42,6 +48,11 @@ const Settings: React.FC = () => {
   }, []);
 
   const handleEdit = (record: ParkingLot) => {
+    if (!isAuthenticated) {
+      setPasswordModalVisible(true);
+      setCurrentLot(record);
+      return;
+    }
     setCurrentLot(record);
     form.setFieldsValue(record);
     setEditModalVisible(true);
@@ -61,6 +72,21 @@ const Settings: React.FC = () => {
       console.error('Error updating parking lot:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handlePasswordSubmit = async (values: { password: string }) => {
+    if (values.password === ADMIN_PASSWORD) {
+      setIsAuthenticated(true);
+      setPasswordModalVisible(false);
+      message.success('验证成功');
+      if (currentLot) {
+        form.setFieldsValue(currentLot);
+        setEditModalVisible(true);
+      }
+    } else {
+      message.error('密码错误');
+      passwordForm.resetFields();
     }
   };
 
@@ -119,6 +145,48 @@ const Settings: React.FC = () => {
           pagination={false}
         />
 
+        {/* 密码验证弹窗 */}
+        <Modal
+          title="管理员验证"
+          open={passwordModalVisible}
+          onCancel={() => {
+            setPasswordModalVisible(false);
+            passwordForm.resetFields();
+          }}
+          footer={null}
+        >
+          <Form
+            form={passwordForm}
+            layout="vertical"
+            onFinish={handlePasswordSubmit}
+          >
+            <Form.Item
+              name="password"
+              rules={[{ required: true, message: '请输入管理员密码' }]}
+            >
+              <Input.Password
+                prefix={<LockOutlined />}
+                placeholder="请输入管理员密码"
+              />
+            </Form.Item>
+
+            <Form.Item>
+              <Space>
+                <Button type="primary" htmlType="submit" loading={loading}>
+                  确认
+                </Button>
+                <Button onClick={() => {
+                  setPasswordModalVisible(false);
+                  passwordForm.resetFields();
+                }}>
+                  取消
+                </Button>
+              </Space>
+            </Form.Item>
+          </Form>
+        </Modal>
+
+        {/* 编辑信息弹窗 */}
         <Modal
           title="编辑停车场信息"
           open={editModalVisible}
