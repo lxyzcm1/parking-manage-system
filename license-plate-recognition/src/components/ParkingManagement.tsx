@@ -104,7 +104,7 @@ const ParkingManagement: React.FC = () => {
   };
 
   const uploadProps: UploadProps = {
-    beforeUpload: (file) => {
+    beforeUpload: (file: RcFile) => {
       const isImage = file.type.startsWith('image/');
       if (!isImage) {
         message.error('只能上传图片文件！');

@@ -25,7 +25,15 @@ const Records: React.FC = () => {
     try {
       setLoading(true);
       const data = await api.getParkingRecords(params);
-      setRecords(data);
+      const transformedRecords: ParkingRecord[] = data.map(record => ({
+        plate_number: record.plate_number,
+        entry_time: record.entry_time,
+        exit_time: record.exit_time || undefined,
+        duration: record.duration || undefined,
+        fee: record.fee || undefined,
+        parking_lot: record.parking_lot_name
+      }));
+      setRecords(transformedRecords);
     } catch (error) {
       message.error('获取停车记录失败');
       console.error('Error fetching records:', error);
@@ -47,8 +55,8 @@ const Records: React.FC = () => {
     },
     {
       title: '停车场',
-      dataIndex: 'parking_lot_name',
-      key: 'parking_lot_name',
+      dataIndex: 'parking_lot',
+      key: 'parking_lot',
       width: 150,
     },
     {
