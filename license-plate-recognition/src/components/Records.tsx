@@ -1,275 +1,167 @@
-import { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
-  Card,
   Table,
-  Button,
+  Card,
   Input,
+  DatePicker,
   Space,
+  Select,
   Tag,
-  Modal,
-  Image,
-  DatePicker
+  message,
 } from 'antd';
-import { SearchOutlined, PrinterOutlined, FileSearchOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
-import type { TableProps } from 'antd/es/table';
-import type { FilterValue, SorterResult } from 'antd/es/table/interface';
-import html2canvas from 'html2canvas';
-import jsPDF from 'jspdf';
+import { SearchOutlined } from '@ant-design/icons';
+import dayjs from 'dayjs';
+import api, { ParkingRecord, RecordQueryParams } from '../services/api';
 
 const { RangePicker } = DatePicker;
 
-interface ParkingRecord {
-  id: string;
-  plateNumber: string;
-  entryTime: Date;
-  exitTime: Date;
-  duration: string;
-  fee: number;
-  status: 'paid' | 'unpaid';
-  entryImage: string;
-  exitImage: string;
-}
-
-const Records = () => {
+const Records: React.FC = () => {
   const [loading, setLoading] = useState(false);
-  const [searchText, setSearchText] = useState('');
-  const [imageModalVisible, setImageModalVisible] = useState(false);
-  const [currentImage, setCurrentImage] = useState('');
-  const [tableParams, setTableParams] = useState<{
-    pagination: {
-      current: number;
-      pageSize: number;
-      total: number;
-    };
-    sortField: string | null;
-    sortOrder: string | null;
-    filters: Record<string, FilterValue | null>;
-  }>({
-    pagination: {
-      current: 1,
-      pageSize: 10,
-      total: 0,
-    },
-    sortField: null,
-    sortOrder: null,
-    filters: {},
-  });
+  const [records, setRecords] = useState<ParkingRecord[]>([]);
+  const [filters, setFilters] = useState<RecordQueryParams>({});
 
-  // 模拟数据
-  const mockData: ParkingRecord[] = [
-    {
-      id: '1',
-      plateNumber: '京A12345',
-      entryTime: new Date('2024-03-20 08:00:00'),
-      exitTime: new Date('2024-03-20 10:30:00'),
-      duration: '2小时30分钟',
-      fee: 15,
-      status: 'paid',
-      entryImage: 'https://example.com/entry1.jpg',
-      exitImage: 'https://example.com/exit1.jpg',
-    },
-    // ... 更多模拟数据
-  ];
+  const fetchRecords = async (params: RecordQueryParams = {}) => {
+    try {
+      setLoading(true);
+      const data = await api.getParkingRecords(params);
+      setRecords(data);
+    } catch (error) {
+      message.error('获取停车记录失败');
+      console.error('Error fetching records:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchRecords(filters);
+  }, [filters]);
 
   const columns: ColumnsType<ParkingRecord> = [
     {
       title: '车牌号',
-      dataIndex: 'plateNumber',
-      key: 'plateNumber',
-      filters: [
-        { text: '京A', value: '京A' },
-        { text: '京B', value: '京B' },
-      ],
-      onFilter: (value: string | number | boolean | bigint, record) => 
-        record.plateNumber.includes(String(value)),
-      render: (text) => <a onClick={() => handleRecordDetail(text)}>{text}</a>,
+      dataIndex: 'plate_number',
+      key: 'plate_number',
+      width: 120,
+    },
+    {
+      title: '停车场',
+      dataIndex: 'parking_lot_name',
+      key: 'parking_lot_name',
+      width: 150,
     },
     {
       title: '入场时间',
-      dataIndex: 'entryTime',
-      key: 'entryTime',
-      sorter: true,
-      render: (date) => date.toLocaleString(),
+      dataIndex: 'entry_time',
+      key: 'entry_time',
+      width: 180,
+      render: (time: string) => dayjs(time).format('YYYY-MM-DD HH:mm:ss'),
     },
     {
       title: '出场时间',
-      dataIndex: 'exitTime',
-      key: 'exitTime',
-      sorter: true,
-      render: (date) => date.toLocaleString(),
+      dataIndex: 'exit_time',
+      key: 'exit_time',
+      width: 180,
+      render: (time: string | null) =>
+        time ? dayjs(time).format('YYYY-MM-DD HH:mm:ss') : '-',
     },
     {
-      title: '停车时长',
+      title: '停车时长(小时)',
       dataIndex: 'duration',
       key: 'duration',
+      width: 120,
+      render: (duration: number | null) =>
+        duration ? duration.toFixed(1) : '-',
     },
     {
-      title: '收费金额',
+      title: '费用(元)',
       dataIndex: 'fee',
       key: 'fee',
-      sorter: true,
-      render: (fee) => `¥${fee.toFixed(2)}`,
+      width: 100,
+      render: (fee: number | null) => (fee ? `¥${fee.toFixed(2)}` : '-'),
     },
     {
       title: '状态',
       dataIndex: 'status',
       key: 'status',
-      render: (status) => (
-        <Tag color={status === 'paid' ? 'green' : 'red'}>
-          {status === 'paid' ? '已支付' : '未支付'}
+      width: 100,
+      render: (status: string) => (
+        <Tag color={status === '在场' ? 'processing' : 'success'}>
+          {status}
         </Tag>
-      ),
-    },
-    {
-      title: '操作',
-      key: 'action',
-      render: (_, record) => (
-        <Space size="middle">
-          <Button
-            type="link"
-            onClick={() => handleViewImage(record.entryImage)}
-            icon={<FileSearchOutlined />}
-          >
-            入场照片
-          </Button>
-          <Button
-            type="link"
-            onClick={() => handleViewImage(record.exitImage)}
-            icon={<FileSearchOutlined />}
-          >
-            出场照片
-          </Button>
-          <Button
-            type="link"
-            onClick={() => handlePrintRecord(record)}
-            icon={<PrinterOutlined />}
-          >
-            打印
-          </Button>
-        </Space>
       ),
     },
   ];
 
-  const handleTableChange: TableProps<ParkingRecord>['onChange'] = (
-    pagination,
-    filters,
-    sorter
-  ) => {
-    setTableParams({
-      pagination: {
-        current: pagination.current ?? 1,
-        pageSize: pagination.pageSize ?? 10,
-        total: pagination.total ?? 0,
-      },
-      filters,
-      sortField: (sorter as SorterResult<ParkingRecord>).field as string,
-      sortOrder: (sorter as SorterResult<ParkingRecord>).order as string,
-    });
-
-    // 这里应该调用后端API获取数据
-    setLoading(true);
-    setTimeout(() => setLoading(false), 1000);
-  };
-
-  const handleSearch = () => {
-    setTableParams({
-      ...tableParams,
-      pagination: { ...tableParams.pagination, current: 1 },
-    });
-    // 这里应该调用后端API搜索数据
-  };
-
-  const handleViewImage = (imageUrl: string) => {
-    setCurrentImage(imageUrl);
-    setImageModalVisible(true);
-  };
-
-  const handleRecordDetail = (plateNumber: string) => {
-    const record = mockData.find(r => r.plateNumber === plateNumber);
-    if (record) {
-      Modal.info({
-        title: '停车记录详情',
-        width: 600,
-        content: (
-          <div>
-            <p>车牌号：{record.plateNumber}</p>
-            <p>入场时间：{record.entryTime.toLocaleString()}</p>
-            <p>出场时间：{record.exitTime.toLocaleString()}</p>
-            <p>停车时长：{record.duration}</p>
-            <p>收费金额：¥{record.fee.toFixed(2)}</p>
-            <p>支付状态：{record.status === 'paid' ? '已支付' : '未支付'}</p>
-          </div>
-        ),
+  const handleDateRangeChange = (dates: any) => {
+    if (dates) {
+      setFilters({
+        ...filters,
+        start_date: dates[0].format('YYYY-MM-DD'),
+        end_date: dates[1].format('YYYY-MM-DD'),
       });
+    } else {
+      const { start_date, end_date, ...rest } = filters;
+      setFilters(rest);
     }
   };
 
-  const handlePrintRecord = async (record: ParkingRecord) => {
-    const element = document.createElement('div');
-    element.innerHTML = `
-      <div style="padding: 20px;">
-        <h2>停车收费凭据</h2>
-        <p>车牌号：${record.plateNumber}</p>
-        <p>入场时间：${record.entryTime.toLocaleString()}</p>
-        <p>出场时间：${record.exitTime.toLocaleString()}</p>
-        <p>停车时长：${record.duration}</p>
-        <p>收费金额：¥${record.fee.toFixed(2)}</p>
-        <p>支付状态：${record.status === 'paid' ? '已支付' : '未支付'}</p>
-      </div>
-    `;
-    document.body.appendChild(element);
+  const handlePlateNumberChange = (value: string) => {
+    if (value) {
+      setFilters({ ...filters, plate_number: value });
+    } else {
+      const { plate_number, ...rest } = filters;
+      setFilters(rest);
+    }
+  };
 
-    try {
-      const canvas = await html2canvas(element);
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, 210, 297);
-      pdf.save(`parking-receipt-${record.plateNumber}.pdf`);
-    } finally {
-      document.body.removeChild(element);
+  const handleStatusChange = (value: string | null) => {
+    if (value) {
+      setFilters({ ...filters, status: value });
+    } else {
+      const { status, ...rest } = filters;
+      setFilters(rest);
     }
   };
 
   return (
     <Card title="停车记录">
       <Space style={{ marginBottom: 16 }}>
-        <RangePicker />
+        <RangePicker
+          onChange={handleDateRangeChange}
+          placeholder={['开始日期', '结束日期']}
+        />
         <Input
           placeholder="搜索车牌号"
-          value={searchText}
-          onChange={(e) => setSearchText(e.target.value)}
+          prefix={<SearchOutlined />}
+          onChange={(e) => handlePlateNumberChange(e.target.value)}
           style={{ width: 200 }}
+          allowClear
         />
-        <Button
-          type="primary"
-          icon={<SearchOutlined />}
-          onClick={handleSearch}
-        >
-          搜索
-        </Button>
+        <Select
+          placeholder="选择状态"
+          style={{ width: 120 }}
+          allowClear
+          onChange={handleStatusChange}
+          options={[
+            { value: '在场', label: '在场' },
+            { value: '已离场', label: '已离场' },
+          ]}
+        />
       </Space>
 
       <Table
         columns={columns}
-        dataSource={mockData}
+        dataSource={records}
         rowKey="id"
         loading={loading}
-        onChange={handleTableChange}
-        pagination={tableParams.pagination}
+        pagination={{
+          showSizeChanger: true,
+          showQuickJumper: true,
+          showTotal: (total) => `共 ${total} 条记录`,
+        }}
       />
-
-      <Modal
-        open={imageModalVisible}
-        onCancel={() => setImageModalVisible(false)}
-        footer={null}
-      >
-        <Image
-          src={currentImage}
-          alt="车辆照片"
-          style={{ width: '100%' }}
-        />
-      </Modal>
     </Card>
   );
 };

@@ -1,129 +1,157 @@
-import { useState } from 'react';
-import { Card, Row, Col, Modal, message } from 'antd';
-import PlateRecognition from './PlateRecognition';
+import React, { useState, useEffect } from 'react';
+import {
+  Form,
+  Upload,
+  Button,
+  message,
+  Card,
+  Select,
+  Row,
+  Col,
+  Typography,
+  Space,
+} from 'antd';
+import { UploadOutlined } from '@ant-design/icons';
+import type { UploadFile } from 'antd/es/upload/interface';
+import api, { ParkingLot, ParkingRecord } from '../services/api';
 
-interface ParkingRecord {
-  plateNumber: string;
-  entryTime: Date;
-  exitTime?: Date;
-  fee?: number;
-  status: 'parked' | 'exited';
-  image: string;
-}
+const { Title } = Typography;
+const { Option } = Select;
 
-const ParkingManagement = () => {
-  const [records, setRecords] = useState<ParkingRecord[]>([]);
-  const [gateOpen, setGateOpen] = useState(false);
-  const [showPayment, setShowPayment] = useState(false);
-  const [currentRecord, setCurrentRecord] = useState<ParkingRecord | null>(null);
+const ParkingManagement: React.FC = () => {
+  const [parkingLots, setParkingLots] = useState<ParkingLot[]>([]);
+  const [entryForm] = Form.useForm();
+  const [exitForm] = Form.useForm();
+  const [loading, setLoading] = useState(false);
+  const [lastRecord, setLastRecord] = useState<ParkingRecord | null>(null);
 
-  const handleEntry = (plateNumber: string, image: string) => {
-    const newRecord: ParkingRecord = {
-      plateNumber,
-      entryTime: new Date(),
-      status: 'parked',
-      image
-    };
-    setRecords([...records, newRecord]);
-    message.success('车辆入场成功');
-    
-    // 打开道闸
-    setGateOpen(true);
-    
-    // 3秒后关闭道闸
-    setTimeout(() => {
-      setGateOpen(false);
-    }, 3000);
-  };
+  useEffect(() => {
+    loadParkingLots();
+  }, []);
 
-  const handleExit = (plateNumber: string) => {
-    const record = records.find(
-      r => r.plateNumber === plateNumber && r.status === 'parked'
-    );
-
-    if (record) {
-      setCurrentRecord({
-        ...record,
-        exitTime: new Date(),
-        fee: calculateFee(record.entryTime, new Date())
-      });
-      setShowPayment(true);
-    } else {
-      message.error('未找到该车辆的入场记录');
+  const loadParkingLots = async () => {
+    try {
+      const lots = await api.getParkingLots();
+      setParkingLots(lots);
+    } catch (error) {
+      message.error('加载停车场信息失败');
     }
   };
 
-  const calculateFee = (entryTime: Date, exitTime: Date): number => {
-    const hours = Math.ceil((exitTime.getTime() - entryTime.getTime()) / (1000 * 60 * 60));
-    return hours * 5; // 假设每小时5元
+  const handleEntrySubmit = async (values: any) => {
+    try {
+      setLoading(true);
+      const image = values.image.file;
+      const response = await api.vehicleEntry(values.parkingLotId, image);
+      message.success(`车辆入场成功！车牌号：${response.plate_number}`);
+      setLastRecord(response);
+      entryForm.resetFields();
+    } catch (error: any) {
+      message.error(error.response?.data?.detail || '车辆入场失败');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handlePayment = () => {
-    if (currentRecord) {
-      setRecords(records.map(r =>
-        r.plateNumber === currentRecord.plateNumber ?
-        { ...currentRecord, status: 'exited' } : r
-      ));
-      setShowPayment(false);
-      setGateOpen(true);
-
-      // 3秒后关闭道闸
-      setTimeout(() => {
-        setGateOpen(false);
-      }, 3000);
+  const handleExitSubmit = async (values: any) => {
+    try {
+      setLoading(true);
+      const image = values.image.file;
+      const response = await api.vehicleExit(image);
+      message.success(
+        `车辆出场成功！\n车牌号：${response.plate_number}\n停车时长：${response.duration?.toFixed(
+          2
+        )}小时\n费用：${response.fee?.toFixed(2)}元`
+      );
+      setLastRecord(response);
+      exitForm.resetFields();
+    } catch (error: any) {
+      message.error(error.response?.data?.detail || '车辆出场失败');
+    } finally {
+      setLoading(false);
     }
+  };
+
+  const uploadProps = {
+    beforeUpload: () => false,
+    maxCount: 1,
   };
 
   return (
-    <div>
+    <div style={{ padding: '24px' }}>
+      <Title level={2}>停车场管理系统</Title>
       <Row gutter={24}>
         <Col span={12}>
           <Card title="车辆入场">
-            <PlateRecognition onRecognized={(plate) => handleEntry(plate.code, plate.image)} />
+            <Form form={entryForm} onFinish={handleEntrySubmit}>
+              <Form.Item
+                name="parkingLotId"
+                label="选择停车场"
+                rules={[{ required: true, message: '请选择停车场' }]}
+              >
+                <Select placeholder="请选择停车场">
+                  {parkingLots.map((lot) => (
+                    <Option key={lot.id} value={lot.id}>
+                      {lot.name} (每小时{lot.hourly_rate}元)
+                    </Option>
+                  ))}
+                </Select>
+              </Form.Item>
+              <Form.Item
+                name="image"
+                label="车辆图片"
+                rules={[{ required: true, message: '请上传车辆图片' }]}
+              >
+                <Upload {...uploadProps}>
+                  <Button icon={<UploadOutlined />}>上传图片</Button>
+                </Upload>
+              </Form.Item>
+              <Form.Item>
+                <Button type="primary" htmlType="submit" loading={loading}>
+                  确认入场
+                </Button>
+              </Form.Item>
+            </Form>
           </Card>
         </Col>
         <Col span={12}>
           <Card title="车辆出场">
-            <PlateRecognition onRecognized={(plate) => handleExit(plate.code)} />
+            <Form form={exitForm} onFinish={handleExitSubmit}>
+              <Form.Item
+                name="image"
+                label="车辆图片"
+                rules={[{ required: true, message: '请上传车辆图片' }]}
+              >
+                <Upload {...uploadProps}>
+                  <Button icon={<UploadOutlined />}>上传图片</Button>
+                </Upload>
+              </Form.Item>
+              <Form.Item>
+                <Button type="primary" htmlType="submit" loading={loading}>
+                  确认出场
+                </Button>
+              </Form.Item>
+            </Form>
           </Card>
         </Col>
       </Row>
 
-      {/* 道闸动画 */}
-      <div style={{
-        marginTop: 20,
-        height: 100,
-        position: 'relative',
-        border: '1px solid #ddd'
-      }}>
-        <div style={{
-          width: 10,
-          height: gateOpen ? 10 : 80,
-          background: '#000',
-          position: 'absolute',
-          left: '50%',
-          top: 10,
-          transition: 'all 0.5s',
-          transformOrigin: 'top',
-          transform: gateOpen ? 'rotate(90deg)' : 'rotate(0deg)'
-        }} />
-      </div>
-
-      <Modal
-        title="支付停车费"
-        open={showPayment}
-        onOk={handlePayment}
-        onCancel={() => setShowPayment(false)}
-      >
-        {currentRecord && (
-          <div>
-            <p>车牌号：{currentRecord.plateNumber}</p>
-            <p>入场时间：{currentRecord.entryTime.toLocaleString()}</p>
-            <p>出场时间：{currentRecord.exitTime?.toLocaleString()}</p>
-            <p>停车费用：¥{currentRecord.fee}</p>
-          </div>
-        )}
-      </Modal>
+      {lastRecord && (
+        <Card title="最近记录" style={{ marginTop: '24px' }}>
+          <Space direction="vertical">
+            <p>车牌号：{lastRecord.plate_number}</p>
+            <p>停车场：{lastRecord.parking_lot}</p>
+            <p>入场时间：{lastRecord.entry_time}</p>
+            {lastRecord.exit_time && (
+              <>
+                <p>出场时间：{lastRecord.exit_time}</p>
+                <p>停车时长：{lastRecord.duration?.toFixed(2)}小时</p>
+                <p>费用：{lastRecord.fee?.toFixed(2)}元</p>
+              </>
+            )}
+          </Space>
+        </Card>
+      )}
     </div>
   );
 };
