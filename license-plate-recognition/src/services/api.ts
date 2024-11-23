@@ -19,7 +19,7 @@ export interface ParkingRecord {
   parking_lot: string;
 }
 
-export interface ParkingRecord {
+export interface ParkingRecordResponse {
   id: number;
   plate_number: string;
   parking_lot_name: string;
@@ -41,6 +41,24 @@ export interface StatisticsData {
   total_vehicles: number;
   total_revenue: number;
   average_duration: number;
+}
+
+export interface ParkingLotStatistics {
+  lot_id: number;
+  lot_name: string;
+  total_vehicles: number;
+  total_revenue: number;
+  current_occupancy: number;
+  occupancy_rate: number;
+}
+
+export interface ParkingStatistics {
+  total_vehicles: number;
+  total_revenue: number;
+  average_duration: number;
+  current_occupancy: number;
+  lot_statistics: ParkingLotStatistics[];
+  hourly_distribution: Record<string, number>;
 }
 
 const api = {
@@ -65,11 +83,11 @@ const api = {
   // 车辆入场
   async vehicleEntry(parkingLotId: number, image: File) {
     const formData = new FormData();
-    formData.append('parking_lot_id', parkingLotId.toString());
     formData.append('file', image);
+    formData.append('parking_lot_id', parkingLotId.toString());
 
-    const response = await axios.post<ParkingRecord>(
-      `${API_BASE_URL}/vehicle/entry`,
+    const response = await axios.post(
+      `${API_BASE_URL}/parking/entry`,
       formData,
       {
         headers: {
@@ -85,8 +103,8 @@ const api = {
     const formData = new FormData();
     formData.append('file', image);
 
-    const response = await axios.post<ParkingRecord>(
-      `${API_BASE_URL}/vehicle/exit`,
+    const response = await axios.post(
+      `${API_BASE_URL}/parking/exit`,
       formData,
       {
         headers: {
@@ -98,8 +116,8 @@ const api = {
   },
 
   // 获取统计数据
-  async getStatistics(startDate: string, endDate: string) {
-    const response = await axios.get<StatisticsData>(
+  async getParkingStatistics(startDate: string, endDate: string): Promise<ParkingStatistics> {
+    const response = await axios.get<ParkingStatistics>(
       `${API_BASE_URL}/parking/statistics`,
       {
         params: {
@@ -112,15 +130,11 @@ const api = {
   },
 
   // 获取停车记录
-  async getParkingRecords(params: RecordQueryParams = {}): Promise<ParkingRecord[]> {
-    const queryParams = new URLSearchParams();
-    Object.entries(params).forEach(([key, value]) => {
-      if (value) {
-        queryParams.append(key, value);
-      }
-    });
-  
-    const response = await axios.get<ParkingRecord[]>(`${API_BASE_URL}/parking/records?${queryParams.toString()}`);
+  async getParkingRecords(params: RecordQueryParams = {}): Promise<ParkingRecordResponse[]> {
+    const response = await axios.get<ParkingRecordResponse[]>(
+      `${API_BASE_URL}/parking/records`,
+      { params }
+    );
     return response.data;
   },
 };

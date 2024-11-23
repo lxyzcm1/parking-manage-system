@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 import sys
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 import hyperlpr3 as lpr3
 import cv2
 import numpy as np
@@ -231,7 +231,23 @@ async def vehicle_exit(
                     "example": {
                         "total_vehicles": 100,
                         "total_revenue": 1500.0,
-                        "average_duration": 2.5
+                        "average_duration": 2.5,
+                        "current_occupancy": 50,
+                        "lot_statistics": [
+                            {
+                                "lot_id": 1,
+                                "lot_name": "A区停车场",
+                                "total_vehicles": 50,
+                                "total_revenue": 750.0,
+                                "current_occupancy": 25,
+                                "occupancy_rate": 0.5
+                            }
+                        ],
+                        "hourly_distribution": {
+                            "00": 10,
+                            "01": 5,
+                            "02": 3
+                        }
                     }
                 }
             }
@@ -245,25 +261,95 @@ async def get_statistics(
 ):
     """获取停车统计数据"""
     start = datetime.strptime(start_date, "%Y-%m-%d")
-    end = datetime.strptime(end_date, "%Y-%m-%d")
+    end = datetime.strptime(end_date, "%Y-%m-%d") + timedelta(days=1)
 
-    records = (
-        db.query(ParkingRecord)
+    # 获取所有停车场
+    parking_lots = db.query(ParkingLot).all()
+    
+    # 初始化统计数据
+    total_stats = {
+        "total_vehicles": 0,
+        "total_revenue": 0.0,
+        "total_duration": 0.0,
+        "current_occupancy": 0
+    }
+    
+    # 初始化每个停车场的统计数据
+    lot_statistics = []
+    
+    # 初始化24小时分布数据
+    hourly_distribution = {f"{i:02d}": 0 for i in range(24)}
+    
+    for lot in parking_lots:
+        # 查询该停车场在指定时间范围内的记录
+        records = (
+            db.query(ParkingRecord)
+            .filter(
+                ParkingRecord.parking_lot_id == lot.id,
+                ParkingRecord.entry_time >= start,
+                ParkingRecord.entry_time < end
+            )
+            .all()
+        )
+        
+        # 计算该停车场的统计数据
+        lot_total_vehicles = len(records)
+        lot_total_revenue = sum(record.fee or 0 for record in records)
+        
+        # 计算当前在场车辆
+        current_vehicles = (
+            db.query(ParkingRecord)
+            .filter(
+                ParkingRecord.parking_lot_id == lot.id,
+                ParkingRecord.entry_time <= datetime.now(),
+                ParkingRecord.exit_time == None
+            )
+            .count()
+        )
+        
+        # 更新总统计数据
+        total_stats["total_vehicles"] += lot_total_vehicles
+        total_stats["total_revenue"] += lot_total_revenue
+        total_stats["current_occupancy"] += current_vehicles
+        
+        # 计算该停车场的占用率
+        occupancy_rate = current_vehicles / lot.capacity if lot.capacity > 0 else 0
+        
+        # 添加停车场统计数据
+        lot_statistics.append({
+            "lot_id": lot.id,
+            "lot_name": lot.name,
+            "total_vehicles": lot_total_vehicles,
+            "total_revenue": lot_total_revenue,
+            "current_occupancy": current_vehicles,
+            "occupancy_rate": occupancy_rate
+        })
+        
+        # 统计24小时分布
+        for record in records:
+            hour = record.entry_time.strftime("%H")
+            hourly_distribution[hour] = hourly_distribution.get(hour, 0) + 1
+    
+    # 计算平均停车时长
+    total_duration = sum(
+        (record.exit_time - record.entry_time).total_seconds() / 3600
+        for record in db.query(ParkingRecord)
         .filter(
             ParkingRecord.entry_time >= start,
-            ParkingRecord.entry_time <= end
+            ParkingRecord.entry_time < end,
+            ParkingRecord.exit_time != None
         )
         .all()
     )
-
-    total_vehicles = len(records)
-    total_revenue = sum(record.fee or 0 for record in records)
-    avg_duration = sum(record.parking_duration or 0 for record in records) / total_vehicles if total_vehicles > 0 else 0
-
+    average_duration = total_duration / total_stats["total_vehicles"] if total_stats["total_vehicles"] > 0 else 0
+    
     return {
-        "total_vehicles": total_vehicles,
-        "total_revenue": total_revenue,
-        "average_duration": avg_duration
+        "total_vehicles": total_stats["total_vehicles"],
+        "total_revenue": total_stats["total_revenue"],
+        "average_duration": average_duration,
+        "current_occupancy": total_stats["current_occupancy"],
+        "lot_statistics": lot_statistics,
+        "hourly_distribution": hourly_distribution
     }
 
 
