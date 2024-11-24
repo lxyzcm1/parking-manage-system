@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Upload, Button, Row, Col, message, Select, Space, Typography } from 'antd';
-import { UploadOutlined } from '@ant-design/icons';
+import { Card, Upload, Button, Row, Col, message, Select, Space, Typography, Statistic } from 'antd';
+import { UploadOutlined, HistoryOutlined } from '@ant-design/icons';
 import type { UploadFile } from 'antd/es/upload/interface';
 import type { RcFile, UploadProps } from 'antd/es/upload';
 import api, { ParkingLot, ParkingRecord } from '../services/api';
 import GateAnimation from './GateAnimation';
 import styled from 'styled-components';
+import dayjs from 'dayjs';
 
 const { Title } = Typography;
 
@@ -64,10 +65,17 @@ const ParkingManagement: React.FC = () => {
       setIsEntry(true);
       setIsAnimating(true);
 
+      const selectedParkingLot = parkingLots.find(lot => lot.id === selectedLot);
       const response = await api.vehicleEntry(selectedLot, entryFile.originFileObj as File);
       message.success(`车牌号 ${response.plate_number} 已入场`);
       setEntryFile(null);
-      setLastRecord(response);
+      setLastRecord({
+        plate_number: response.plate_number,
+        parking_lot: selectedParkingLot?.name || '',
+        entry_time: response.entry_time,
+        exit_time: undefined,
+        fee: undefined
+      });
     } catch (error) {
       message.error('入场处理失败');
       setIsAnimating(false);
@@ -88,10 +96,28 @@ const ParkingManagement: React.FC = () => {
       setIsAnimating(true);
 
       const response = await api.vehicleExit(exitFile.originFileObj as File);
-      message.success(`车牌号 ${response.plate_number} 已出场，费用：${response.fee}元`);
-      setExitFile(null);
-      setLastRecord(response);
+      console.log('Exit Response:', response); // 添加日志查看响应数据
+
+      if (response) {
+        message.success(`车牌号 ${response.plate_number} 已出场，费用：${response.fee}元`);
+        setExitFile(null);
+
+        // 确保所有必要的字段都存在
+        const record = {
+          plate_number: response.plate_number,
+          parking_lot: response.parking_lot || response.parking_lot_name || '未知停车场',
+          entry_time: response.entry_time,
+          exit_time: response.exit_time || new Date().toISOString(),
+          fee: response.fee || 0
+        };
+
+        console.log('Processed Record:', record); // 添加日志查看处理后的数据
+        setLastRecord(record);
+      } else {
+        message.error('无效的响应数据');
+      }
     } catch (error) {
+      console.error('Exit error:', error);
       message.error('出场处理失败');
       setIsAnimating(false);
     } finally {
@@ -193,17 +219,58 @@ const ParkingManagement: React.FC = () => {
       </Row>
 
       {lastRecord && (
-        <Card title="最近记录">
-          <p>车牌号：{lastRecord.plate_number}</p>
-          <p>停车场：{lastRecord.parking_lot}</p>
-          <p>入场时间：{lastRecord.entry_time}</p>
-          {lastRecord.exit_time && (
-            <>
-              <p>出场时间：{lastRecord.exit_time}</p>
-              <p>停车时长：{lastRecord.duration?.toFixed(2)}小时</p>
-              <p>费用：{lastRecord.fee?.toFixed(2)}元</p>
-            </>
-          )}
+        <Card
+          title={
+            <span>
+              <HistoryOutlined style={{ marginRight: 8 }} />
+              最近记录
+            </span>
+          }
+          style={{ marginTop: 24 }}
+        >
+          <Row gutter={[24, 16]}>
+            <Col span={8}>
+              <Statistic
+                title="车牌号"
+                value={lastRecord.plate_number}
+                valueStyle={{ color: '#1890ff' }}
+              />
+            </Col>
+            <Col span={8}>
+              <Statistic
+                title="停车场"
+                value={lastRecord.parking_lot}
+              />
+            </Col>
+            {!lastRecord.exit_time ? (
+              // 入场记录显示
+              <Col span={8}>
+                <Statistic
+                  title="入场时间"
+                  value={dayjs(lastRecord.entry_time).format('YYYY-MM-DD HH:mm:ss')}
+                />
+              </Col>
+            ) : (
+              // 出场记录显示
+              <>
+                <Col span={8}>
+                  <Statistic
+                    title="出场时间"
+                    value={dayjs(lastRecord.exit_time).format('YYYY-MM-DD HH:mm:ss')}
+                  />
+                </Col>
+                <Col span={8} offset={8}>
+                  <Statistic
+                    title="费用"
+                    value={lastRecord.fee || 0}
+                    precision={2}
+                    prefix="¥"
+                    valueStyle={{ color: '#cf1322' }}
+                  />
+                </Col>
+              </>
+            )}
+          </Row>
         </Card>
       )}
     </Space>
