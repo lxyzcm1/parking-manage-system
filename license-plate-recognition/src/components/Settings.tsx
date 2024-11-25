@@ -14,6 +14,7 @@ import {
 import { EditOutlined, LockOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import api, { ParkingLot } from '../services/api';
+import './Settings.css';
 
 const { Title } = Typography;
 
@@ -133,9 +134,9 @@ const Settings: React.FC = () => {
   ];
 
   return (
-    <Card>
+    <Card className="settings-card">
       <Space direction="vertical" style={{ width: '100%' }} size="large">
-        <Title level={4}>停车场设置</Title>
+        <Title level={4} className="settings-title">停车场设置</Title>
         
         <Table
           columns={columns}
@@ -143,6 +144,7 @@ const Settings: React.FC = () => {
           rowKey="id"
           loading={loading}
           pagination={false}
+          className="settings-table"
         />
 
         {/* 密码验证弹窗 */}
@@ -154,6 +156,7 @@ const Settings: React.FC = () => {
             passwordForm.resetFields();
           }}
           footer={null}
+          className="settings-modal"
         >
           <Form
             form={passwordForm}
@@ -163,14 +166,16 @@ const Settings: React.FC = () => {
             <Form.Item
               name="password"
               rules={[{ required: true, message: '请输入管理员密码' }]}
+              className="settings-form-item"
             >
               <Input.Password
                 prefix={<LockOutlined />}
                 placeholder="请输入管理员密码"
+                className="settings-input"
               />
             </Form.Item>
 
-            <Form.Item>
+            <Form.Item className="settings-form-item">
               <Space>
                 <Button type="primary" htmlType="submit" loading={loading}>
                   确认
@@ -192,6 +197,7 @@ const Settings: React.FC = () => {
           open={editModalVisible}
           onCancel={() => setEditModalVisible(false)}
           footer={null}
+          className="settings-modal"
         >
           <Form
             form={form}
@@ -203,20 +209,23 @@ const Settings: React.FC = () => {
               name="name"
               label="停车场名称"
               rules={[{ required: true, message: '请输入停车场名称' }]}
+              className="settings-form-item"
             >
-              <Input placeholder="请输入停车场名称" />
+              <Input placeholder="请输入停车场名称" className="settings-input" />
             </Form.Item>
 
             <Form.Item
               name="capacity"
               label="车位容量"
               rules={[{ required: true, message: '请输入车位容量' }]}
+              className="settings-form-item"
             >
               <InputNumber
                 min={1}
                 max={1000}
                 style={{ width: '100%' }}
                 placeholder="请输入车位容量"
+                className="settings-input-number"
               />
             </Form.Item>
 
@@ -224,6 +233,7 @@ const Settings: React.FC = () => {
               name="hourly_rate"
               label="每小时收费(元)"
               rules={[{ required: true, message: '请输入每小时收费' }]}
+              className="settings-form-item"
             >
               <InputNumber
                 min={0}
@@ -232,20 +242,23 @@ const Settings: React.FC = () => {
                 precision={2}
                 style={{ width: '100%' }}
                 placeholder="请输入每小时收费"
+                className="settings-input-number"
               />
             </Form.Item>
 
             <Form.Item
               name="description"
               label="描述"
+              className="settings-form-item"
             >
               <Input.TextArea
                 rows={4}
                 placeholder="请输入停车场描述"
+                className="settings-textarea"
               />
             </Form.Item>
 
-            <Form.Item>
+            <Form.Item className="settings-form-item">
               <Space>
                 <Button type="primary" htmlType="submit" loading={loading}>
                   保存

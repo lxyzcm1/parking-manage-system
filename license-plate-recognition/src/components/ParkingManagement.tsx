@@ -7,6 +7,7 @@ import api, { ParkingLot, ParkingRecord } from '../services/api';
 import GateAnimation from './GateAnimation';
 import styled from 'styled-components';
 import dayjs from 'dayjs';
+import './ParkingManagement.css';
 
 const { Title } = Typography;
 
@@ -142,14 +143,14 @@ const ParkingManagement: React.FC = () => {
   };
 
   return (
-    <Space direction="vertical" size="large" style={{ width: '100%', padding: '24px' }}>
-      <Title level={2}>停车场管理</Title>
-      <Row gutter={24}>
+    <Space direction="vertical" size="large" className="parking-management-container">
+      <Title level={2} className="parking-management-title">停车场管理</Title>
+      <Row gutter={24} className="parking-management-row">
         <Col span={12}>
-          <StyledCard title="车辆入场">
-            <Space direction="vertical" style={{ width: '100%' }}>
+          <StyledCard title="车辆入场" className="parking-card">
+            <Space direction="vertical" className="parking-space">
               <Select
-                style={{ width: '100%' }}
+                className="parking-select"
                 placeholder="选择停车场"
                 onChange={(value) => setSelectedLot(value)}
                 options={parkingLots.map((lot) => ({
@@ -161,6 +162,7 @@ const ParkingManagement: React.FC = () => {
                 {...uploadProps}
                 fileList={entryFile ? [entryFile] : []}
                 onChange={({ fileList }) => setEntryFile(fileList[0])}
+                className="parking-upload"
               >
                 <Button icon={<UploadOutlined />}>选择入场图片</Button>
               </Upload>
@@ -169,7 +171,7 @@ const ParkingManagement: React.FC = () => {
                 onClick={handleEntryUpload}
                 loading={loading && isEntry}
                 disabled={!entryFile || !selectedLot || isAnimating}
-                style={{ width: '100%' }}
+                className="parking-button"
               >
                 确认入场
               </Button>
@@ -186,12 +188,13 @@ const ParkingManagement: React.FC = () => {
           </StyledCard>
         </Col>
         <Col span={12}>
-          <StyledCard title="车辆出场">
-            <Space direction="vertical" style={{ width: '100%' }}>
+          <StyledCard title="车辆出场" className="parking-card">
+            <Space direction="vertical" className="parking-space">
               <Upload
                 {...uploadProps}
                 fileList={exitFile ? [exitFile] : []}
                 onChange={({ fileList }) => setExitFile(fileList[0])}
+                className="parking-upload"
               >
                 <Button icon={<UploadOutlined />}>选择出场图片</Button>
               </Upload>
@@ -200,7 +203,7 @@ const ParkingManagement: React.FC = () => {
                 onClick={handleExitUpload}
                 loading={loading && !isEntry}
                 disabled={!exitFile || isAnimating}
-                style={{ width: '100%' }}
+                className="parking-button"
               >
                 确认出场
               </Button>
@@ -219,15 +222,12 @@ const ParkingManagement: React.FC = () => {
       </Row>
 
       {lastRecord && (
-        <Card
-          title={
-            <span>
-              <HistoryOutlined style={{ marginRight: 8 }} />
-              最近记录
-            </span>
-          }
-          style={{ marginTop: 24 }}
-        >
+        <Card title={
+          <span>
+            <HistoryOutlined style={{ marginRight: 8 }} />
+            最近记录
+          </span>
+        } className="last-record-card">
           <Row gutter={[24, 16]}>
             <Col span={8}>
               <Statistic
@@ -243,7 +243,6 @@ const ParkingManagement: React.FC = () => {
               />
             </Col>
             {!lastRecord.exit_time ? (
-              // 入场记录显示
               <Col span={8}>
                 <Statistic
                   title="入场时间"
@@ -251,7 +250,6 @@ const ParkingManagement: React.FC = () => {
                 />
               </Col>
             ) : (
-              // 出场记录显示
               <>
                 <Col span={8}>
                   <Statistic

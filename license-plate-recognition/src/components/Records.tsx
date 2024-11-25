@@ -13,6 +13,7 @@ import type { ColumnsType } from 'antd/es/table';
 import { SearchOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import api, { ParkingRecord, RecordQueryParams } from '../services/api';
+import './Records.css';
 
 const { RangePicker } = DatePicker;
 
@@ -134,8 +135,8 @@ const Records: React.FC = () => {
   };
 
   return (
-    <Card title="停车记录">
-      <Space style={{ marginBottom: 16 }}>
+    <Card title="停车记录" className="records-card">
+      <Space className="records-filter" style={{ width: '100%' }}>
         <RangePicker
           onChange={handleDateRangeChange}
           placeholder={['开始日期', '结束日期']}
@@ -144,12 +145,12 @@ const Records: React.FC = () => {
           placeholder="搜索车牌号"
           prefix={<SearchOutlined />}
           onChange={(e) => handlePlateNumberChange(e.target.value)}
-          style={{ width: 200 }}
+          className="records-input"
           allowClear
         />
         <Select
           placeholder="选择状态"
-          style={{ width: 120 }}
+          className="records-select"
           allowClear
           onChange={handleStatusChange}
           options={[
@@ -169,6 +170,7 @@ const Records: React.FC = () => {
           showQuickJumper: true,
           showTotal: (total) => `共 ${total} 条记录`,
         }}
+        className="records-table"
       />
     </Card>
   );

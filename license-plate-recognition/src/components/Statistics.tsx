@@ -25,6 +25,7 @@ import dayjs from 'dayjs';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import api, { ParkingLotStatistics, ParkingStatistics } from '../services/api';
+import './Statistics.css';
 
 const { RangePicker } = DatePicker;
 
@@ -275,111 +276,115 @@ const Statistics: React.FC = () => {
   };
 
   return (
-    <Space direction="vertical" size="large" style={{ width: '100%' }} ref={contentRef}>
-      <Card>
-        <Row justify="space-between" style={{ marginBottom: 16 }}>
-          <Col>
-            <RangePicker
-              value={[dayjs(dateRange[0]), dayjs(dateRange[1])]}
-              onChange={handleDateRangeChange}
-            />
-          </Col>
-          <Col>
-            <Space>
-              <Button
-                type="primary"
-                icon={<FileOutlined />}
-                onClick={generatePDF}
-                loading={loading}
-              >
-                导出报表
-              </Button>
-            </Space>
-          </Col>
-        </Row>
+    <div className="statistics-container" ref={contentRef}>
+      <Space direction="vertical" size="large" style={{ width: '100%' }}>
+        <Card className="statistics-card">
+          <Row justify="space-between" className="statistics-header">
+            <Col>
+              <RangePicker
+                value={[dayjs(dateRange[0]), dayjs(dateRange[1])]}
+                onChange={handleDateRangeChange}
+              />
+            </Col>
+            <Col>
+              <Space>
+                <Button
+                  type="primary"
+                  icon={<FileOutlined />}
+                  onClick={generatePDF}
+                  loading={loading}
+                >
+                  导出报表
+                </Button>
+              </Space>
+            </Col>
+          </Row>
 
-        <Row gutter={16}>
-          <Col span={6}>
-            <Card>
-              <Statistic
-                title="总车流量"
-                value={statistics.total_vehicles}
-                prefix={<CarOutlined />}
-                loading={loading}
-              />
-            </Card>
-          </Col>
-          <Col span={6}>
-            <Card>
-              <Statistic
-                title="总收入"
-                value={statistics.total_revenue}
-                precision={2}
-                prefix={<DollarOutlined />}
-                suffix="元"
-                loading={loading}
-              />
-            </Card>
-          </Col>
-          <Col span={6}>
-            <Card>
-              <Statistic
-                title="平均停车时长"
-                value={statistics.average_duration}
-                precision={1}
-                prefix={<ClockCircleOutlined />}
-                suffix="小时"
-                loading={loading}
-              />
-            </Card>
-          </Col>
-          <Col span={6}>
-            <Card>
-              <Statistic
-                title="当前在场车辆"
-                value={statistics.current_occupancy}
-                prefix={<BarChartOutlined />}
-                loading={loading}
-              />
-            </Card>
-          </Col>
-        </Row>
-      </Card>
+          <Row gutter={[16, 16]} className="statistics-cards-row">
+            <Col xs={24} sm={12} md={6}>
+              <Card className="stat-card">
+                <Statistic
+                  title="总车流量"
+                  value={statistics.total_vehicles}
+                  prefix={<CarOutlined />}
+                  loading={loading}
+                />
+              </Card>
+            </Col>
+            <Col xs={24} sm={12} md={6}>
+              <Card className="stat-card">
+                <Statistic
+                  title="总收入"
+                  value={statistics.total_revenue}
+                  precision={2}
+                  prefix={<DollarOutlined />}
+                  suffix="元"
+                  loading={loading}
+                />
+              </Card>
+            </Col>
+            <Col xs={24} sm={12} md={6}>
+              <Card className="stat-card">
+                <Statistic
+                  title="平均停车时长"
+                  value={statistics.average_duration}
+                  precision={1}
+                  prefix={<ClockCircleOutlined />}
+                  suffix="小时"
+                  loading={loading}
+                />
+              </Card>
+            </Col>
+            <Col xs={24} sm={12} md={6}>
+              <Card className="stat-card">
+                <Statistic
+                  title="当前在场车辆"
+                  value={statistics.current_occupancy}
+                  prefix={<BarChartOutlined />}
+                  loading={loading}
+                />
+              </Card>
+            </Col>
+          </Row>
+        </Card>
 
-      <Card title="停车场统计">
-        <Table
-          columns={columns}
-          dataSource={statistics.lot_statistics}
-          rowKey="lot_id"
-          loading={loading}
-          pagination={false}
-        />
-      </Card>
-
-      <Card title="24小时车流量分布">
-        {hourlyData.length > 0 ? (
-          <Line
-            data={hourlyData}
+        <Card title="停车场统计" className="statistics-table-card">
+          <Table
+            columns={columns}
+            dataSource={statistics.lot_statistics}
+            rowKey="lot_id"
             loading={loading}
-            xField="hour"
-            yField="count"
-            xAxis={{
-              title: { text: '时间' },
-            }}
-            yAxis={{
-              title: { text: '车辆数' },
-            }}
-            smooth
-            point={{
-              size: 3,
-              shape: 'circle',
-            }}
+            pagination={false}
+            className="statistics-table"
           />
-        ) : (
-          <Empty description="暂无数据" />
-        )}
-      </Card>
-    </Space>
+        </Card>
+
+        <Card title="24小时车流量分布" className="statistics-chart-card">
+          {hourlyData.length > 0 ? (
+            <Line
+              data={hourlyData}
+              loading={loading}
+              xField="hour"
+              yField="count"
+              xAxis={{
+                title: { text: '时间' },
+              }}
+              yAxis={{
+                title: { text: '车辆数' },
+              }}
+              smooth
+              point={{
+                size: 3,
+                shape: 'circle',
+              }}
+              color={['#1890FF']}
+            />
+          ) : (
+            <Empty description="暂无数据" />
+          )}
+        </Card>
+      </Space>
+    </div>
   );
 };
 

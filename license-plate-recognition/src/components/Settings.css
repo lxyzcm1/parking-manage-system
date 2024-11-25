@@ -1,0 +1,30 @@
+.settings-card {
+  padding: 24px;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.settings-title {
+  text-align: left;
+  margin-bottom: 24px;
+}
+
+.settings-table {
+  background: #fff;
+  border-radius: 8px;
+}
+
+.settings-modal {
+  padding: 20px;
+}
+
+.settings-form-item {
+  margin-bottom: 16px;
+}
+
+.settings-input,
+.settings-input-number,
+.settings-textarea {
+  width: 100%;
+} 

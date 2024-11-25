@@ -6,23 +6,24 @@ import {
   DashboardOutlined,
   PrinterOutlined
 } from '@ant-design/icons';
+import './Layout.css';
 
 const { Header, Sider, Content } = Layout;
 
 const MainLayout = () => {
   return (
-    <Layout style={{ minHeight: '100vh' }}>
-      <Header style={{ padding: 0, background: '#fff' }}>
-        <div style={{ float: 'left', width: 200, textAlign: 'center' }}>
+    <Layout className="main-layout">
+      <Header className="header">
+        <div className="logo-container">
           <h2>停车场管理系统</h2>
         </div>
       </Header>
       <Layout>
-        <Sider width={200} style={{ background: '#fff' }}>
+        <Sider className="sider" width={200}>
           <Menu
             mode="inline"
             defaultSelectedKeys={['1']}
-            style={{ height: '100%', borderRight: 0 }}
+            className="menu"
           >
             <Menu.Item key="1" icon={<CarOutlined />}>
               <Link to="/parking">车辆进出</Link>
@@ -38,8 +39,8 @@ const MainLayout = () => {
             </Menu.Item>
           </Menu>
         </Sider>
-        <Layout style={{ padding: '24px' }}>
-          <Content style={{ background: '#fff', padding: 24, margin: 0, minHeight: 280 }}>
+        <Layout className="content-layout">
+          <Content className="content">
             <Outlet />
           </Content>
         </Layout>
