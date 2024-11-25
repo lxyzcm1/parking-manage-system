@@ -17,6 +17,7 @@ export interface ParkingRecord {
   duration?: number;
   fee?: number;
   parking_lot: string;
+  status: string;
 }
 
 export interface ParkingRecordResponse {

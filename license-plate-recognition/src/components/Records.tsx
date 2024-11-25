@@ -20,7 +20,7 @@ const { RangePicker } = DatePicker;
 const Records: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [records, setRecords] = useState<ParkingRecord[]>([]);
-  const [filters, setFilters] = useState<RecordQueryParams>({});
+  const [filters, setFilters] = useState<RecordQueryParams>( {});
 
   const fetchRecords = async (params: RecordQueryParams = {}) => {
     try {
@@ -32,7 +32,8 @@ const Records: React.FC = () => {
         exit_time: record.exit_time || undefined,
         duration: record.duration || undefined,
         fee: record.fee || undefined,
-        parking_lot: record.parking_lot_name
+        parking_lot: record.parking_lot_name,
+        status: record.exit_time ? '已离场' : '在场'
       }));
       setRecords(transformedRecords);
     } catch (error) {
