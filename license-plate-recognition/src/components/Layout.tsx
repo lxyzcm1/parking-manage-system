@@ -1,43 +1,88 @@
-import { Layout, Menu } from 'antd';
-import { Link, Outlet } from 'react-router-dom';
+import React from 'react';
+import { Layout, Menu, Button } from 'antd';
+import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import {
-  CarOutlined,
+  ImportOutlined,
+  ExportOutlined,
+  HistoryOutlined,
+  BarChartOutlined,
   SettingOutlined,
-  DashboardOutlined,
-  PrinterOutlined
+  LogoutOutlined
 } from '@ant-design/icons';
 import './Layout.css';
 
 const { Header, Sider, Content } = Layout;
 
-const MainLayout = () => {
+const MainLayout: React.FC = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const userRole = localStorage.getItem('userRole');
+
+  const handleLogout = () => {
+    localStorage.removeItem('userRole');
+    localStorage.removeItem('username');
+    navigate('/login', { replace: true });
+  };
+
+  const getMenuItems = () => {
+    const baseItems = [
+      {
+        key: '/entry',
+        icon: <ImportOutlined />,
+        label: '车辆入场'
+      },
+      {
+        key: '/exit',
+        icon: <ExportOutlined />,
+        label: '车辆出场'
+      },
+      {
+        key: '/records',
+        icon: <HistoryOutlined />,
+        label: '停车记录'
+      }
+    ];
+
+    const adminItems = [
+      {
+        key: '/statistics',
+        icon: <BarChartOutlined />,
+        label: '统计分析'
+      },
+      {
+        key: '/settings',
+        icon: <SettingOutlined />,
+        label: '系统设置'
+      }
+    ];
+
+    return userRole === 'admin' ? [...baseItems, ...adminItems] : baseItems;
+  };
+
   return (
     <Layout className="main-layout">
       <Header className="header">
         <div className="logo-container">
           <h2>停车场管理系统</h2>
         </div>
+        <Button
+          type="text"
+          icon={<LogoutOutlined />}
+          onClick={handleLogout}
+          style={{ color: 'white' }}
+        >
+          退出登录
+        </Button>
       </Header>
       <Layout>
         <Sider className="sider" width={200}>
           <Menu
             mode="inline"
-            defaultSelectedKeys={['1']}
+            selectedKeys={[location.pathname]}
+            items={getMenuItems()}
+            onClick={({ key }) => navigate(key)}
             className="menu"
-          >
-            <Menu.Item key="1" icon={<CarOutlined />}>
-              <Link to="/parking">车辆进出</Link>
-            </Menu.Item>
-            <Menu.Item key="2" icon={<SettingOutlined />}>
-              <Link to="/settings">系统设置</Link>
-            </Menu.Item>
-            <Menu.Item key="3" icon={<DashboardOutlined />}>
-              <Link to="/statistics">统计报表</Link>
-            </Menu.Item>
-            <Menu.Item key="4" icon={<PrinterOutlined />}>
-              <Link to="/records">收费记录</Link>
-            </Menu.Item>
-          </Menu>
+          />
         </Sider>
         <Layout className="content-layout">
           <Content className="content">

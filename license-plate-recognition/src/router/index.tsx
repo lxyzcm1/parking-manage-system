@@ -1,35 +1,70 @@
-import { createBrowserRouter } from 'react-router-dom';
+import { createBrowserRouter, Navigate } from 'react-router-dom';
 import MainLayout from '../components/Layout';
-import ParkingManagement from '../components/ParkingManagement';
+import Login from '../components/Login';
+import VehicleEntry from '../components/VehicleEntry';
+import VehicleExit from '../components/VehicleExit';
 import Settings from '../components/Settings';
 import Statistics from '../components/Statistics';
 import Records from '../components/Records';
+import PrivateRoute from '../components/PrivateRoute';
 
 export const router = createBrowserRouter([
+  {
+    path: '/login',
+    element: <Login />,
+  },
   {
     path: '/',
     element: <MainLayout />,
     children: [
       {
         path: '/',
-        element: <ParkingManagement />,
+        element: <Navigate to="/entry" replace />,
       },
       {
-        path: '/parking',
-        element: <ParkingManagement />,
+        path: 'entry',
+        element: (
+          <PrivateRoute allowedRoles={['operator', 'admin']}>
+            <VehicleEntry />
+          </PrivateRoute>
+        ),
       },
       {
-        path: '/settings',
-        element: <Settings />,
+        path: 'exit',
+        element: (
+          <PrivateRoute allowedRoles={['operator', 'admin']}>
+            <VehicleExit />
+          </PrivateRoute>
+        ),
       },
       {
-        path: '/statistics',
-        element: <Statistics />,
+        path: 'records',
+        element: (
+          <PrivateRoute allowedRoles={['operator', 'admin']}>
+            <Records />
+          </PrivateRoute>
+        ),
       },
       {
-        path: '/records',
-        element: <Records />,
+        path: 'statistics',
+        element: (
+          <PrivateRoute allowedRoles={['admin']}>
+            <Statistics />
+          </PrivateRoute>
+        ),
+      },
+      {
+        path: 'settings',
+        element: (
+          <PrivateRoute allowedRoles={['admin']}>
+            <Settings />
+          </PrivateRoute>
+        ),
       },
     ],
+  },
+  {
+    path: '*',
+    element: <Navigate to="/" replace />,
   },
 ]);
