@@ -4,9 +4,9 @@ import sys
 _MODEL_VERSION_ = "20230229"
 
 if 'win32' in sys.platform:
-    _DEFAULT_FOLDER_ = os.path.join(os.environ['HOMEPATH'], ".hyperlpr3")
+    _DEFAULT_FOLDER_ = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))), "models")
 else:
-    _DEFAULT_FOLDER_ = os.path.join(os.environ['HOME'], ".hyperlpr3")
+    _DEFAULT_FOLDER_ = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))), "models")
 
 _ONLINE_URL_ = "http://hyperlpr.tunm.top/raw/"
 
