@@ -12,6 +12,7 @@
   "dependencies": {
     "@ant-design/icons": "^5.5.1",
     "@ant-design/plots": "^2.3.2",
+    "@antv/g2plot": "^2.4.32",
     "@react-pdf/renderer": "^4.1.4",
     "@types/styled-components": "^5.1.34",
     "antd": "^5.22.1",

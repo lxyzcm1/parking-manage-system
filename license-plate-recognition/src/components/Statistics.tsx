@@ -19,7 +19,9 @@ import {
   BarChartOutlined,
   FileOutlined,
 } from '@ant-design/icons';
-import { Line } from '@ant-design/plots';
+import { Line as AntLine, Column as AntColumn, Pie as AntPie } from '@ant-design/plots';
+import { Line, Column, Pie } from '@antv/g2plot';
+import type { ColumnOptions, PieOptions, LineOptions } from '@antv/g2plot';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
 import html2canvas from 'html2canvas';
@@ -120,157 +122,283 @@ const Statistics: React.FC = () => {
     : [];
 
   const generatePDF = async () => {
-    if (!contentRef.current) return;
+    let containerDiv: HTMLDivElement | null = null;
+    let printContent: HTMLDivElement | null = null;
+    let chart: Line | null = null;
+    let columnChart: Column | null = null;
+    let pieChart: Pie | null = null;
 
     try {
       setLoading(true);
+      message.loading({ content: '正在生成PDF...', key: 'pdfGeneration' });
 
-      // 等待图表加载完成
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      // 创建一个临时div用于生成PDF内容
-      const printContent = document.createElement('div');
+      // 创建打印容器
+      printContent = document.createElement('div');
       printContent.style.padding = '20px';
-      printContent.style.background = 'white';
-      printContent.style.width = '1200px';
-      
+      printContent.style.backgroundColor = '#ffffff';
+      printContent.style.width = '1000px';
+
       // 添加标题
       const title = document.createElement('h1');
       title.style.textAlign = 'center';
-      title.style.marginBottom = '20px';
-      title.style.fontFamily = 'Arial, "Microsoft YaHei", sans-serif';
-      title.innerText = '停车场统计报表';
+      title.style.marginBottom = '30px';
+      title.style.fontSize = '24px';
+      title.style.color = '#1890ff';
+      title.textContent = `停车场统计报表 (${dateRange[0]} 至 ${dateRange[1]})`;
       printContent.appendChild(title);
 
-      // 添加日期范围
-      const dateInfo = document.createElement('p');
-      dateInfo.style.marginBottom = '20px';
-      dateInfo.style.fontFamily = 'Arial, "Microsoft YaHei", sans-serif';
-      dateInfo.innerText = `统计时间：${dateRange[0]} 至 ${dateRange[1]}`;
-      printContent.appendChild(dateInfo);
+      // 添加总体统计信息
+      const summaryContainer = document.createElement('div');
+      summaryContainer.style.marginBottom = '30px';
+      summaryContainer.style.padding = '20px';
+      summaryContainer.style.backgroundColor = '#f5f5f5';
+      summaryContainer.style.borderRadius = '4px';
+      summaryContainer.innerHTML = `
+        <div style="display: flex; justify-content: space-around; text-align: center;">
+          <div>
+            <h3 style="margin: 0; color: #666;">总车流量</h3>
+            <p style="font-size: 24px; margin: 10px 0; color: #1890ff;">${statistics.total_vehicles}</p>
+          </div>
+          <div>
+            <h3 style="margin: 0; color: #666;">总收入</h3>
+            <p style="font-size: 24px; margin: 10px 0; color: #1890ff;">¥${statistics.total_revenue.toFixed(2)}</p>
+          </div>
+          <div>
+            <h3 style="margin: 0; color: #666;">平均停车时长</h3>
+            <p style="font-size: 24px; margin: 10px 0; color: #1890ff;">${statistics.average_duration.toFixed(1)}小时</p>
+          </div>
+        </div>
+      `;
+      printContent.appendChild(summaryContainer);
 
-      // 创建统计数据表格
-      const statsTable = document.createElement('table');
-      statsTable.style.width = '100%';
-      statsTable.style.marginBottom = '30px';
-      statsTable.style.borderCollapse = 'collapse';
-      statsTable.style.fontFamily = 'Arial, "Microsoft YaHei", sans-serif';
+      // 渲染图表
+      if (hourlyData.length > 0) {
+        // 添加图表标题
+        const chartTitle = document.createElement('h2');
+        chartTitle.style.marginBottom = '20px';
+        chartTitle.style.fontSize = '18px';
+        chartTitle.textContent = '24小时车流量趋势';
+        printContent.appendChild(chartTitle);
 
-      // 添加统计数据
-      const statsData = [
-        ['总车流量', `${statistics.total_vehicles} 辆`],
-        ['总收入', `¥${statistics.total_revenue.toFixed(2)}`],
-        ['平均停车时长', `${statistics.average_duration.toFixed(1)} 小时`],
-        ['当前在场车辆', `${statistics.current_occupancy} 辆`],
-      ];
+        // 创建图表容器
+        const chartWrapper = document.createElement('div');
+        chartWrapper.style.width = '100%';
+        chartWrapper.style.height = '300px';
+        chartWrapper.style.marginBottom = '40px';
+        chartWrapper.style.backgroundColor = '#ffffff';
+        chartWrapper.style.borderRadius = '4px';
+        chartWrapper.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)';
+        chartWrapper.style.padding = '20px';
+        printContent.appendChild(chartWrapper);
 
-      statsData.forEach(([label, value]) => {
-        const row = statsTable.insertRow();
-        const cell1 = row.insertCell();
-        const cell2 = row.insertCell();
-        
-        cell1.style.border = '1px solid #ddd';
-        cell1.style.padding = '8px';
-        cell1.style.backgroundColor = '#f5f5f5';
-        cell1.innerText = label;
+        const chartConfig: LineOptions = {
+          data: hourlyData,
+          xField: 'hour',
+          yField: 'count',
+          xAxis: {
+            title: { text: '时间' },
+          },
+          yAxis: {
+            title: { text: '车辆数' },
+          },
+          smooth: true,
+          point: {
+            size: 3,
+            shape: 'circle',
+          },
+          color: '#1890FF',
+          animation: false,
+        };
 
-        cell2.style.border = '1px solid #ddd';
-        cell2.style.padding = '8px';
-        cell2.innerText = value;
-      });
+        chart = new Line(chartWrapper, chartConfig);
+        await chart.render();
 
-      printContent.appendChild(statsTable);
+        // 等待图表渲染完成
+        await new Promise(resolve => setTimeout(resolve, 500));
 
-      // 添加停车场统计表格
-      const parkingTable = document.createElement('table');
-      parkingTable.style.width = '100%';
-      parkingTable.style.marginBottom = '30px';
-      parkingTable.style.borderCollapse = 'collapse';
-      parkingTable.style.fontFamily = 'Arial, "Microsoft YaHei", sans-serif';
+        // 添加柱状图标题
+        const columnTitle = document.createElement('h2');
+        columnTitle.style.marginBottom = '20px';
+        columnTitle.style.fontSize = '18px';
+        columnTitle.textContent = '停车场车流量分布';
+        printContent.appendChild(columnTitle);
 
-      // 添加表头
-      const headerRow = parkingTable.insertRow();
-      ['停车场', '总车流量', '总收入', '当前占用', '占用率'].forEach(text => {
-        const th = document.createElement('th');
-        th.style.border = '1px solid #ddd';
-        th.style.padding = '8px';
-        th.style.backgroundColor = '#f5f5f5';
-        th.innerText = text;
-        headerRow.appendChild(th);
-      });
+        // 渲染柱状图
+        const columnContainer = document.createElement('div');
+        columnContainer.style.width = '100%';
+        columnContainer.style.height = '300px';
+        columnContainer.style.marginBottom = '40px';
+        columnContainer.style.backgroundColor = '#ffffff';
+        columnContainer.style.borderRadius = '4px';
+        columnContainer.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)';
+        columnContainer.style.padding = '20px';
+        printContent.appendChild(columnContainer);
 
-      // 添加停车场数据
-      statistics.lot_statistics.forEach(lot => {
-        const row = parkingTable.insertRow();
-        [
-          lot.lot_name,
-          lot.total_vehicles.toString(),
-          `¥${lot.total_revenue.toFixed(2)}`,
-          lot.current_occupancy.toString(),
-          `${(lot.occupancy_rate * 100).toFixed(1)}%`,
-        ].forEach(text => {
-          const cell = row.insertCell();
-          cell.style.border = '1px solid #ddd';
-          cell.style.padding = '8px';
-          cell.innerText = text;
-        });
-      });
+        const columnChartConfig: ColumnOptions = {
+          data: statistics.lot_statistics.map(lot => ({
+            停车场: lot.lot_name,
+            车流量: lot.total_vehicles
+          })),
+          xField: '停车场',
+          yField: '车流量',
+          label: {
+            position: 'top',
+            style: {
+              fill: '#1890ff',
+            },
+          },
+          xAxis: {
+            label: {
+              autoRotate: true,
+              autoHide: false,
+              autoEllipsis: true,
+            },
+          },
+          animation: false,
+        };
 
-      printContent.appendChild(parkingTable);
+        columnChart = new Column(columnContainer, columnChartConfig);
+        await columnChart.render();
 
-      // 添加图表说明
-      const chartNote = document.createElement('p');
-      chartNote.style.marginTop = '20px';
-      chartNote.style.fontStyle = 'italic';
-      chartNote.style.color = '#666';
-      chartNote.style.fontFamily = 'Arial, "Microsoft YaHei", sans-serif';
-      chartNote.innerText = '注：24小时车流量分布图表可在系统界面查看';
-      printContent.appendChild(chartNote);
+        // 添加饼图标题
+        const pieTitle = document.createElement('h2');
+        pieTitle.style.marginBottom = '20px';
+        pieTitle.style.fontSize = '18px';
+        pieTitle.textContent = '停车场收入分布';
+        printContent.appendChild(pieTitle);
+
+        // 渲染饼图
+        const pieContainer = document.createElement('div');
+        pieContainer.style.width = '100%';
+        pieContainer.style.height = '300px';
+        pieContainer.style.marginBottom = '40px';
+        pieContainer.style.backgroundColor = '#ffffff';
+        pieContainer.style.borderRadius = '4px';
+        pieContainer.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)';
+        pieContainer.style.padding = '20px';
+        printContent.appendChild(pieContainer);
+
+        const pieChartConfig: PieOptions = {
+          data: statistics.lot_statistics.map(lot => ({
+            type: lot.lot_name,
+            value: lot.total_revenue
+          })),
+          angleField: 'value',
+          colorField: 'type',
+          radius: 0.75,
+          label: {
+            type: 'inner',
+            offset: '-30%',
+            content: '{percentage}',
+            style: {
+              fontSize: 14,
+              textAlign: 'center',
+            },
+          },
+          interactions: [
+            {
+              type: 'element-active',
+            },
+          ],
+          legend: {
+            layout: 'horizontal',
+            position: 'bottom'
+          },
+          animation: false,
+        };
+
+        pieChart = new Pie(pieContainer, pieChartConfig);
+        await pieChart.render();
+
+        // 等待所有图表渲染完成
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
 
       // 将内容添加到文档中以便截图
-      document.body.appendChild(printContent);
+      containerDiv = document.createElement('div');
+      containerDiv.style.position = 'absolute';
+      containerDiv.style.left = '-9999px';
+      containerDiv.style.top = '0';
+      containerDiv.appendChild(printContent);
+      document.body.appendChild(containerDiv);
+
+      // 等待所有图表完全渲染
+      await new Promise(resolve => setTimeout(resolve, 1000));
 
       // 使用html2canvas将内容转换为图片
       const canvas = await html2canvas(printContent, {
-        scale: 2,
-        useCORS: true,
-        logging: false,
-        width: 1200,
+        backgroundColor: '#ffffff',
+        width: printContent.offsetWidth,
         height: printContent.offsetHeight,
+        logging: false,
+        useCORS: true,
+        scale: 2,
+        onclone: (clonedDoc: Document) => {
+          const clonedContent = clonedDoc.querySelector('div') as HTMLElement;
+          if (clonedContent) {
+            clonedContent.style.transform = 'scale(1)';
+          }
+        }
       } as any);
 
-      // 移除临时内容
-      document.body.removeChild(printContent);
-
       // 创建PDF
-      const imgWidth = 210; // A4 宽度 (mm)
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
       const pdf = new jsPDF('p', 'mm', 'a4');
-      const imgData = canvas.toDataURL('image/png');
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const margin = 10; // 页边距，单位是毫米
+
+      // 计算图片在PDF中的尺寸
+      const imgWidth = pageWidth - (margin * 2);
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
 
       // 如果内容超过一页，需要分页处理
+      let heightLeft = imgHeight;
       let position = 0;
-      const pageHeight = 295; // A4高度
-      
-      while (position < imgHeight) {
-        if (position > 0) {
-          pdf.addPage();
-        }
-        
-        pdf.addImage(imgData, 'PNG', 0, -position, imgWidth, imgHeight);
-        position += pageHeight;
+
+      // 添加第一页
+      pdf.addImage(
+        canvas.toDataURL('image/jpeg', 1.0),
+        'JPEG',
+        margin,
+        margin,
+        imgWidth,
+        imgHeight
+      );
+
+      // 如果内容超过一页，添加新页面
+      while (heightLeft >= pageHeight) {
+        position = heightLeft - pageHeight;
+        pdf.addPage();
+        pdf.addImage(
+          canvas.toDataURL('image/jpeg', 1.0),
+          'JPEG',
+          margin,
+          margin - position,
+          imgWidth,
+          imgHeight
+        );
+        heightLeft -= pageHeight;
       }
 
       // 生成文件名
       const fileName = `停车场统计报表_${dateRange[0]}_${dateRange[1]}.pdf`;
-      
-      // 保存PDF
       pdf.save(fileName);
-      message.success('报表导出成功！');
+
+      message.success({ content: 'PDF生成成功', key: 'pdfGeneration' });
     } catch (error) {
-      console.error('Error generating PDF:', error);
-      message.error('报表生成失败');
+      console.error('PDF生成失败:', error);
+      message.error({ content: 'PDF生成失败', key: 'pdfGeneration' });
     } finally {
+      // 销毁图表实例
+      if (chart) chart.destroy();
+      if (columnChart) columnChart.destroy();
+      if (pieChart) pieChart.destroy();
+
+      // 移除临时内容
+      if (containerDiv && document.body.contains(containerDiv)) {
+        document.body.removeChild(containerDiv);
+      }
+      
       setLoading(false);
     }
   };
@@ -283,6 +411,7 @@ const Statistics: React.FC = () => {
             <Col>
               <RangePicker
                 value={[dayjs(dateRange[0]), dayjs(dateRange[1])]}
+
                 onChange={handleDateRangeChange}
               />
             </Col>
@@ -359,11 +488,80 @@ const Statistics: React.FC = () => {
           />
         </Card>
 
+        <Row gutter={[16, 16]}>
+          <Col span={12}>
+            <Card title="各停车场车流量统计" className="statistics-chart-card">
+              {statistics.lot_statistics.length > 0 ? (
+                <AntColumn
+                  data={statistics.lot_statistics.map(lot => ({
+                    停车场: lot.lot_name,
+                    车流量: lot.total_vehicles
+                  }))}
+                  loading={false}
+                  xField="停车场"
+                  yField="车流量"
+                  label={{
+                    position: 'top' as const,
+                    style: {
+                      fill: '#1890ff',
+                    },
+                  }}
+                  xAxis={{
+                    label: {
+                      autoRotate: true,
+                      autoHide: false,
+                      autoEllipsis: true,
+                    },
+                  }}
+                  theme={{
+                    loading: {
+                      shadowRoot: false
+                    }
+                  }}
+                />
+              ) : (
+                <Empty description="暂无数据" />
+              )}
+            </Card>
+          </Col>
+          <Col span={12}>
+            <Card title="各停车场收入占比" className="statistics-chart-card">
+              {statistics.lot_statistics.length > 0 ? (
+                <AntPie
+                  data={statistics.lot_statistics.map(lot => ({
+                    type: lot.lot_name,
+                    value: lot.total_revenue
+                  }))}
+                  loading={false}
+                  angleField="value"
+                  colorField="type"
+                  radius={0.8}
+                  label={{
+                    type: 'outer' as const,
+                    content: '{name} {percentage}',
+                  }}
+                  legend={{
+                    layout: 'horizontal' as const,
+                    position: 'bottom' as const
+                  }}
+                  theme={{
+                    loading: {
+                      shadowRoot: false
+                    }
+                  }}
+                />
+              ) : (
+                <Empty description="暂无数据" />
+              )}
+            </Card>
+          </Col>
+        </Row>
+
         <Card title="24小时车流量分布" className="statistics-chart-card">
           {hourlyData.length > 0 ? (
-            <Line
+            <AntLine
               data={hourlyData}
-              loading={loading}
+              loading={false}
               xField="hour"
               yField="count"
               xAxis={{
@@ -378,6 +576,11 @@ const Statistics: React.FC = () => {
                 shape: 'circle',
               }}
               color={['#1890FF']}
+              theme={{
+                loading: {
+                  shadowRoot: false
+                }
+              }}
             />
           ) : (
             <Empty description="暂无数据" />
