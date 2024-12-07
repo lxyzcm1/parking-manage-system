@@ -1,4 +1,5 @@
-# HyperLPR3 - 中文车牌识别系统（原项目链接：https://github.com/szad670401/HyperLPR）
+# HyperLPR3 - 中文车牌识别系统
+（ 原项目链接：https://github.com/szad670401/HyperLPR ）
 
 HyperLPR3 是一个专门为中国车牌设计的高级车牌识别系统。该项目利用深度学习模型和计算机视觉技术实现准确的车牌检测和识别。
 
